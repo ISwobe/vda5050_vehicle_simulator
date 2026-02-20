@@ -115,6 +115,33 @@
           }
         ],
         "blockingTypes": ["HARD"]
+      },
+      {
+        "actionType": "initToStation",
+        "actionDescription": "Resets (overrides) the position of the AGV with the position of the provided station.",
+        "actionScopes": ["INSTANT"],
+        "actionParameters": [
+          {
+            "key": "station_id",
+            "valueDataType": "STRING",
+            "description": "name of the station",
+            "isOptional": false
+          },
+          {
+            "key": "theta",
+            "valueDataType": "FLOAT",
+            "description": "orientation of the agv in the station frame",
+            "isOptional": false
+          },
+          {
+            "key": "mapId",
+            "valueDataType": "STRING",
+            "description": "map id",
+            "isOptional": false
+          }
+        ],
+        "resultDescription": "Position of agv overridden. No return value",
+        "blockingTypes": ["HARD"]
       }
     ]
   },

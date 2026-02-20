@@ -278,6 +278,35 @@ impl VehicleSimulator {
                         result_description: None,
                         blocking_types: Some(vec![BlockingType::Hard]),
                     },
+                    AgvAction {
+                        action_type: String::from("initToStation"),
+                        action_description: Some(String::from(
+                            "Resets (overrides) the position of the AGV with the position of the provided station.",
+                        )),
+                        action_scopes: vec![ActionScope::Instant],
+                        action_parameters: Some(vec![
+                            AgvActionParameter {
+                                key: String::from("station_id"),
+                                value_data_type: ValueDataType::String,
+                                description: Some(String::from("name of the station")),
+                                is_optional: Some(false),
+                            },
+                            AgvActionParameter {
+                                key: String::from("theta"),
+                                value_data_type: ValueDataType::Float,
+                                description: Some(String::from("orientation of the agv in the station frame")),
+                                is_optional: Some(false),
+                            },
+                            AgvActionParameter {
+                                key: String::from("mapId"),
+                                value_data_type: ValueDataType::String,
+                                description: Some(String::from("map id")),
+                                is_optional: Some(false),
+                            },
+                        ]),
+                        result_description: Some(String::from("Position of agv overridden. No return value")),
+                        blocking_types: Some(vec![BlockingType::Hard]),
+                    },
                 ],
             },
             agv_geometry: AgvGeometry {
@@ -398,6 +427,7 @@ impl VehicleSimulator {
             
             match action.action_type.as_str() {
                 "initPosition" => self.handle_init_position_action(&action),
+                "initToStation" => self.handle_init_to_station_action(&action),
                 "pick" => self.handle_pick_action(&action),
                 "drop" => self.handle_drop_action(&action),
                 _ => println!("Unknown action type: {}", action.action_type),
@@ -429,6 +459,34 @@ impl VehicleSimulator {
         });
         
         self.state.last_node_id = init_params.last_node_id;
+        self.visualization.agv_position = self.state.agv_position.clone();
+    }
+
+    fn handle_init_to_station_action(&mut self, action: &Action) {
+        let station_id = self.extract_string_param(action, "station_id");
+        let theta = self.extract_float_param(action, "theta");
+        let map_id = self.extract_string_param(action, "mapId");
+
+        println!("Executing initToStation action: station_id='{}', theta={}, mapId='{}'", station_id, theta, map_id);
+
+        // Keep current x/y (the simulator has no station registry to look up coordinates).
+        // Mark position as initialized with the station's orientation and map context.
+        let (current_x, current_y) = self.state.agv_position
+            .as_ref()
+            .map(|p| (p.x, p.y))
+            .unwrap_or((0.0, 0.0));
+
+        self.state.agv_position = Some(AgvPosition {
+            x: current_x,
+            y: current_y,
+            position_initialized: true,
+            theta,
+            map_id,
+            deviation_range: None,
+            map_description: None,
+            localization_score: None,
+        });
+
         self.visualization.agv_position = self.state.agv_position.clone();
     }
 
