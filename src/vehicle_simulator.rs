@@ -253,6 +253,22 @@ impl VehicleSimulator {
                         blocking_types: Some(vec![BlockingType::Hard]),
                     },
                     AgvAction {
+                        action_type: String::from("startCharging"),
+                        action_description: Some(String::from("Start charging")),
+                        action_scopes: vec![ActionScope::Instant, ActionScope::Node],
+                        action_parameters: None,
+                        result_description: None,
+                        blocking_types: Some(vec![BlockingType::Hard]),
+                    },
+                    AgvAction {
+                        action_type: String::from("stopCharging"),
+                        action_description: Some(String::from("Stop charging")),
+                        action_scopes: vec![ActionScope::Instant],
+                        action_parameters: None,
+                        result_description: None,
+                        blocking_types: Some(vec![BlockingType::Hard]),
+                    },
+                    AgvAction {
                         action_type: String::from("pick"),
                         action_description: Some(String::from("Pick up a load")),
                         action_scopes: vec![ActionScope::Node],
@@ -260,6 +276,12 @@ impl VehicleSimulator {
                             key: String::from("lhd"),
                             value_data_type: ValueDataType::String,
                             description: Some(String::from("Load handling device identifier")),
+                            is_optional: Some(true),
+                        }, 
+                         AgvActionParameter {
+                            key: String::from("stationType"),
+                            value_data_type: ValueDataType::String,
+                            description: Some(String::from("Informs how the pick operation is handled in detail (e.g., floor location, rack location, passive conveyor, active conveyor, etc.).")),
                             is_optional: Some(false),
                         }]),
                         result_description: None,
@@ -273,7 +295,7 @@ impl VehicleSimulator {
                             key: String::from("lhd"),
                             value_data_type: ValueDataType::String,
                             description: Some(String::from("Load handling device identifier")),
-                            is_optional: Some(false),
+                            is_optional: Some(true),
                         }]),
                         result_description: None,
                         blocking_types: Some(vec![BlockingType::Hard]),
@@ -306,7 +328,7 @@ impl VehicleSimulator {
                         ]),
                         result_description: Some(String::from("Position of agv overridden. No return value")),
                         blocking_types: Some(vec![BlockingType::Hard]),
-                    },
+                    }
                 ],
             },
             agv_geometry: AgvGeometry {
@@ -428,6 +450,10 @@ impl VehicleSimulator {
             match action.action_type.as_str() {
                 "initPosition" => self.handle_init_position_action(&action),
                 "initToStation" => self.handle_init_to_station_action(&action),
+                "startCharging" => self.handle_arbitrary_instant_station_action(&action),
+                "stopCharging" => self.handle_arbitrary_instant_station_action(&action),
+                "startPause" => self.handle_arbitrary_instant_station_action(&action),
+                "stopPause" => self.handle_arbitrary_instant_station_action(&action),
                 "pick" => self.handle_pick_action(&action),
                 "drop" => self.handle_drop_action(&action),
                 _ => println!("Unknown action type: {}", action.action_type),
@@ -459,6 +485,31 @@ impl VehicleSimulator {
         });
         
         self.state.last_node_id = init_params.last_node_id;
+        self.visualization.agv_position = self.state.agv_position.clone();
+    }
+
+    fn handle_arbitrary_instant_station_action(&mut self, action: &Action) {
+        
+        println!("Executing  action: action_type='{}'", action.action_type);
+
+        // Keep current x/y (the simulator has no station registry to look up coordinates).
+        // Mark position as initialized with the station's orientation and map context.
+        let (current_x, current_y) = self.state.agv_position
+            .as_ref()
+            .map(|p| (p.x, p.y))
+            .unwrap_or((0.0, 0.0));
+
+        self.state.agv_position = Some(AgvPosition {
+            x: current_x,
+            y: current_y,
+            position_initialized: true,
+            theta,
+            map_id,
+            deviation_range: None,
+            map_description: None,
+            localization_score: None,
+        });
+
         self.visualization.agv_position = self.state.agv_position.clone();
     }
 
