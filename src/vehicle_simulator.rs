@@ -491,26 +491,6 @@ impl VehicleSimulator {
     fn handle_arbitrary_instant_station_action(&mut self, action: &Action) {
         
         println!("Executing  action: action_type='{}'", action.action_type);
-
-        // Keep current x/y (the simulator has no station registry to look up coordinates).
-        // Mark position as initialized with the station's orientation and map context.
-        let (current_x, current_y) = self.state.agv_position
-            .as_ref()
-            .map(|p| (p.x, p.y))
-            .unwrap_or((0.0, 0.0));
-
-        self.state.agv_position = Some(AgvPosition {
-            x: current_x,
-            y: current_y,
-            position_initialized: true,
-            theta,
-            map_id,
-            deviation_range: None,
-            map_description: None,
-            localization_score: None,
-        });
-
-        self.visualization.agv_position = self.state.agv_position.clone();
     }
 
     fn handle_init_to_station_action(&mut self, action: &Action) {
