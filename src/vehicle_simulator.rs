@@ -162,11 +162,11 @@ impl VehicleSimulator {
         Factsheet {
             header_id: 0,
             timestamp: utils::get_timestamp(),
-            version: config.vehicle.vda_full_version.clone(),
-            manufacturer: config.vehicle.manufacturer.clone(),
-            serial_number: config.vehicle.serial_number.clone(),
+            version: String::from(&config.vehicle.vda_full_version),
+            manufacturer: String::from(&config.vehicle.manufacturer),
+            serial_number: String::from(&config.vehicle.serial_number),
             type_specification: TypeSpecification {
-                series_name: String::from("rikeb-agv-v1"),
+                series_name: from(&config.vehicle.series_name),
                 series_description: Some(format!(
                     "Differential drive carrier AGV simulated in Webots (mapId: {})",
                     config.settings.map_id

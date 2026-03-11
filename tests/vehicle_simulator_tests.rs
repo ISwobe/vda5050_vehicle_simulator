@@ -22,6 +22,7 @@ fn create_test_config() -> Config {
         },
         vehicle: VehicleConfig {
             serial_number: "TEST-AGV-001".to_string(),
+            series_name: "series".to_string(),
             manufacturer: "TEST".to_string(),
             vda_version: "v2".to_string(),
             vda_full_version: "2.0.0".to_string(),

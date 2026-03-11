@@ -20,6 +20,7 @@ pub struct VehicleConfig {
     pub serial_number: String,
     pub vda_version: String,
     pub vda_full_version: String,
+    pub series_name: String,
 }
 
 #[derive(Deserialize, Clone)]
