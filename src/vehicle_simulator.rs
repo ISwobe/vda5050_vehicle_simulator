@@ -166,7 +166,7 @@ impl VehicleSimulator {
             manufacturer: String::from(&config.vehicle.manufacturer),
             serial_number: String::from(&config.vehicle.serial_number),
             type_specification: TypeSpecification {
-                series_name: from(&config.vehicle.series_name),
+                series_name: String::from(&config.vehicle.series_name),
                 series_description: Some(format!(
                     "Differential drive carrier AGV simulated in Webots (mapId: {})",
                     config.settings.map_id
