@@ -494,11 +494,9 @@ impl VehicleSimulator {
     }
 
     fn handle_init_to_station_action(&mut self, action: &Action) {
-        let station_id = self.extract_string_param(action, "station_id");
-        let theta = self.extract_float_param(action, "theta");
-        let map_id = self.extract_string_param(action, "mapId");
-
-        println!("Executing initToStation action: station_id='{}', theta={}, mapId='{}'", station_id, theta, map_id);
+        let init_params = self.extract_init_station_parameters(action);
+        
+        println!("Executing initToStation action: station_id='{}', theta={}, mapId='{}'", init_params.station_id, init_params.theta, init_params.map_id);
 
         // Keep current x/y (the simulator has no station registry to look up coordinates).
         // Mark position as initialized with the station's orientation and map context.
@@ -511,14 +509,45 @@ impl VehicleSimulator {
             x: current_x,
             y: current_y,
             position_initialized: true,
-            theta,
-            map_id,
+            init_params.theta,
+            init_params.map_id,
             deviation_range: None,
             map_description: None,
             localization_score: None,
         });
-
+        self.state.last_node_id = init_params.station_id;
         self.visualization.agv_position = self.state.agv_position.clone();
+    }
+
+    fn extract_init_station_parameters(&self, action: &Action) -> InitToStationParams {
+        let extract_float_param = |key: &str| -> f32 {
+            action.action_parameters
+                .as_ref()
+                .and_then(|params| params.iter().find(|x| x.key == key))
+                .map(|param| match &param.value {
+                    ActionParameterValue::Str(s) => s.parse::<f32>().unwrap_or(0.0),
+                    ActionParameterValue::Float(f) => *f,
+                    _ => 0.0,
+                })
+                .unwrap_or(0.0)
+        };
+
+        let extract_string_param = |key: &str| -> String {
+            action.action_parameters
+                .as_ref()
+                .and_then(|params| params.iter().find(|x| x.key == key))
+                .map(|param| match &param.value {
+                    ActionParameterValue::Str(s) => s.clone(),
+                    _ => String::new(),
+                })
+                .unwrap_or_default()
+        };
+
+        InitToStationParams {
+            theta: extract_float_param("theta"),
+            map_id: extract_string_param("mapId"),
+            station_id: extract_string_param("station_Id"),
+        }
     }
 
     fn extract_init_position_parameters(&self, action: &Action) -> InitPositionParams {
@@ -1053,4 +1082,10 @@ struct InitPositionParams {
     theta: f32,
     map_id: String,
     last_node_id: String,
+} 
+
+struct InitToStationParams {
+    station_id: String,
+    theta: f32,
+    map_id: String
 } 
