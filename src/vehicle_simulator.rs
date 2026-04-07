@@ -546,7 +546,7 @@ impl VehicleSimulator {
         InitToStationParams {
             theta: extract_float_param("theta"),
             map_id: extract_string_param("mapId"),
-            station_id: extract_string_param("station_Id"),
+            station_id: extract_string_param("station_id"),
         }
     }
 
