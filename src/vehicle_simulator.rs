@@ -757,12 +757,19 @@ impl VehicleSimulator {
             return;
         }
 
-        if self.is_vehicle_ready_for_new_order() {
+        if self.is_vehicle_ready_for_new_order() || self.vehicle_is_at_first_node_of_order(&order_request) {
             self.state.action_states.clear();
             self.accept_order(order_request);
         } else {
             self.reject_order("There are active order states or edge states".to_string());
         }
+    }
+
+    fn vehicle_is_at_first_node_of_order(&self, order: &Order) -> bool {
+        if let Some(first_node) = order.nodes.first() {
+            return self.state.last_node_id == first_node.node_id;
+        }
+        false
     }
 
     fn handle_order_update(&mut self, order_request: Order) {
