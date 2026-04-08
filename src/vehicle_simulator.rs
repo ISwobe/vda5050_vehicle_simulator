@@ -745,19 +745,40 @@ impl VehicleSimulator {
     }
 
     pub fn process_order(&mut self, order_request: Order) {
+        println!(
+            "Received order: id='{}' updateId={} | current state: orderId='{}' orderUpdateId={} lastNodeId='{}' lastNodeSeqId={}",
+            order_request.order_id,
+            order_request.order_update_id,
+            self.state.order_id,
+            self.state.order_update_id,
+            self.state.last_node_id,
+            self.state.last_node_sequence_id,
+        );
         if order_request.order_id != self.state.order_id {
+            println!("Routing to handle_new_order (different orderId)");
             self.handle_new_order(order_request);
         } else {
+            println!("Routing to handle_order_update (same orderId)");
             self.handle_order_update(order_request);
         }
     }
 
     fn handle_new_order(&mut self, order_request: Order) {
+        let ready = self.is_vehicle_ready_for_new_order();
+        let at_first_node = self.vehicle_is_at_first_node_of_order(&order_request);
+        println!(
+            "handle_new_order: vehicle_ready={} at_first_node={} node_states={} edge_states={}",
+            ready,
+            at_first_node,
+            self.state.node_states.len(),
+            self.state.edge_states.len(),
+        );
+
         if !self.can_accept_new_order() {
             return;
         }
 
-        if self.is_vehicle_ready_for_new_order() || self.vehicle_is_at_first_node_of_order(&order_request) {
+        if ready || at_first_node {
             self.state.action_states.clear();
             self.accept_order(order_request);
         } else {
@@ -773,6 +794,11 @@ impl VehicleSimulator {
     }
 
     fn handle_order_update(&mut self, order_request: Order) {
+        println!(
+            "handle_order_update: incoming updateId={} current updateId={}",
+            order_request.order_update_id,
+            self.state.order_update_id,
+        );
         if order_request.order_update_id > self.state.order_update_id {
             if !self.can_accept_new_order() {
                 return;
@@ -781,15 +807,28 @@ impl VehicleSimulator {
             self.state.action_states.clear();
             self.accept_order(order_request);
         } else {
-            self.reject_order("Order update ID is lower than current".to_string());
+            self.reject_order(format!(
+                "Order update ID is lower than or equal to current (incoming={} current={})",
+                order_request.order_update_id,
+                self.state.order_update_id,
+            ));
         }
     }
 
     fn can_accept_new_order(&self) -> bool {
         let has_unreleased_nodes = self.state.node_states.iter().any(|node| !node.released);
-        
+        println!(
+            "can_accept_new_order: has_unreleased_nodes={} node_states={:?}",
+            has_unreleased_nodes,
+            self.state.node_states.iter().map(|n| format!("{}(seq={},rel={})", &n.node_id[..8], n.sequence_id, n.released)).collect::<Vec<_>>(),
+        );
+
         if has_unreleased_nodes && self.state.node_states[0].sequence_id != self.state.last_node_sequence_id {
-            self.reject_order("Vehicle has not arrived at the latest released node".to_string());
+            self.reject_order(format!(
+                "Vehicle has not arrived at the latest released node (node_states[0].sequence_id={} != last_node_sequence_id={})",
+                self.state.node_states[0].sequence_id,
+                self.state.last_node_sequence_id,
+            ));
             return false;
         }
 
@@ -810,6 +849,11 @@ impl VehicleSimulator {
                     node_position.x,
                     node_position.y,
                 );
+                println!(
+                    "Distance to last released node '{}': {:.4} (threshold=0.1)",
+                    &last_released_node.node_id[..8],
+                    distance,
+                );
                 return distance <= 0.1;
             }
         }
@@ -817,13 +861,19 @@ impl VehicleSimulator {
     }
 
     pub fn is_vehicle_ready_for_new_order(&self) -> bool {
-        self.state.node_states.is_empty() 
-            && self.state.edge_states.is_empty() 
+        self.state.node_states.is_empty()
+            && self.state.edge_states.is_empty()
             && self.state.agv_position.as_ref().map_or(false, |pos| pos.position_initialized)
     }
 
     fn accept_order(&mut self, order_request: Order) {
-        println!("Accepting order: {}", order_request.order_id);
+        println!(
+            "Accepting order: id='{}' updateId={} nodes={} edges={}",
+            order_request.order_id,
+            order_request.order_update_id,
+            order_request.nodes.len(),
+            order_request.edges.len(),
+        );
         self.order = Some(order_request);
 
         // Update order information
@@ -831,7 +881,10 @@ impl VehicleSimulator {
         self.state.order_update_id = self.order.as_ref().unwrap().order_update_id;
         
         if self.state.order_update_id == 0 {
+            println!("Resetting lastNodeSequenceId to 0 (new order)");
             self.state.last_node_sequence_id = 0;
+        } else {
+            println!("Keeping lastNodeSequenceId={} (order update)", self.state.last_node_sequence_id);
         }
 
         // Clear existing states
@@ -842,6 +895,12 @@ impl VehicleSimulator {
         // Process nodes and edges
         self.process_order_nodes();
         self.process_order_edges();
+
+        println!(
+            "Order accepted: lastNodeSeqId={} node_states={:?}",
+            self.state.last_node_sequence_id,
+            self.state.node_states.iter().map(|n| format!("{}(seq={})", &n.node_id[..8], n.sequence_id)).collect::<Vec<_>>(),
+        );
     }
 
     fn process_order_nodes(&mut self) {
@@ -896,7 +955,7 @@ impl VehicleSimulator {
     }
 
     fn reject_order(&self, reason: String) {
-        println!("Rejecting order: {}", reason);
+        println!("*** ORDER REJECTED: {} ***", reason);
     }
 
     pub fn update_state(&mut self) {
